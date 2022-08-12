@@ -1,4 +1,4 @@
-package strikememongo
+package mockmongo
 
 import (
 	"testing"

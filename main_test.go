@@ -1,11 +1,11 @@
-package strikememongo
+package mockmongo
 
 import (
 	"context"
 	"testing"
 
+	"github.com/chensylz/mockmongo/strikememongolog"
 	"github.com/stretchr/testify/require"
-	"github.com/strikesecurity/strikememongo/strikememongolog"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -54,4 +54,21 @@ func TestWithReplica(t *testing.T) {
 			require.NoError(t, client.Ping(context.Background(), readpref.Primary()))
 		})
 	}
+}
+
+func TestWithBinPath(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		server, err := StartWithOptions(&Options{
+			LogLevel:         strikememongolog.LogLevelDebug,
+			IsSkipRunMonitor: true,
+			MongodBin:        "C:\\Program Files\\MongoDB\\Server\\4.4\\bin\\mongod.exe",
+		})
+		require.NoError(t, err)
+		defer server.Stop()
+
+		client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(server.URI()))
+		require.NoError(t, err)
+
+		require.NoError(t, client.Ping(context.Background(), nil))
+	})
 }

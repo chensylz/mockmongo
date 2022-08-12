@@ -99,7 +99,7 @@ Behind the scenes, when you run `Start()`, a few things are happening:
 
 The behavior of `strikememongo` can be controlled by using
 `strikememongo.StartWithOptions` instead of `strikememongo.Start`. See
-[the godoc](https://godoc.org/github.com/strikesecurity/strikememongo) for all the options. Many options can also be set via environment variable.
+[the godoc](https://godoc.org/github.com/chensylz/mockmongo) for all the options. Many options can also be set via environment variable.
 
 A few common use-cases are covered here:
 

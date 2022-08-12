@@ -3,10 +3,10 @@ package mongobin
 import (
 	"testing"
 
+	"github.com/chensylz/mockmongo/strikememongolog"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/strikesecurity/strikememongo/strikememongolog"
 )
 
 func TestGetOrDownload(t *testing.T) {

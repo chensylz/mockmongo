@@ -1,4 +1,4 @@
-package strikememongo
+package mockmongo
 
 import (
 	"errors"
@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/strikesecurity/strikememongo/mongobin"
-	"github.com/strikesecurity/strikememongo/strikememongolog"
+	"github.com/chensylz/mockmongo/mongobin"
+	"github.com/chensylz/mockmongo/strikememongolog"
 )
 
 // Options is the configuration options for a launched MongoDB binary
@@ -49,6 +49,8 @@ type Options struct {
 	// How long to wait for mongod to start up and report a port number. Does
 	// not include download time, only startup time. Defaults to 10 seconds.
 	StartupTimeout time.Duration
+
+	IsSkipRunMonitor bool
 }
 
 func (opts *Options) fillDefaults() error {

@@ -1,7 +1,8 @@
-package strikememongo
+package mockmongo
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/strikesecurity/strikememongo/monitor"
-	"github.com/strikesecurity/strikememongo/strikememongolog"
+	"github.com/chensylz/mockmongo/monitor"
+	"github.com/chensylz/mockmongo/strikememongolog"
 )
 
 // Server represents a running MongoDB server
@@ -89,19 +90,22 @@ func StartWithOptions(opts *Options) (*Server, error) {
 
 	// Start a watcher: the watcher is a subprocess that ensure if this process
 	// dies, the mongo server will be killed (and not reparented under init)
-	watcherCmd, err := monitor.RunMonitor(os.Getpid(), cmd.Process.Pid)
-	if err != nil {
-		killErr := cmd.Process.Kill()
-		if killErr != nil {
-			logger.Warnf("error stopping mongo process: %s", killErr)
-		}
+	var watcherCmd *exec.Cmd
+	if !opts.IsSkipRunMonitor {
+		watcherCmd, err = monitor.RunMonitor(os.Getpid(), cmd.Process.Pid)
+		if err != nil {
+			killErr := cmd.Process.Kill()
+			if killErr != nil {
+				logger.Warnf("error stopping mongo process: %s", killErr)
+			}
 
-		remErr := os.RemoveAll(dbDir)
-		if remErr != nil {
-			logger.Warnf("error removing data directory: %s", remErr)
-		}
+			remErr := os.RemoveAll(dbDir)
+			if remErr != nil {
+				logger.Warnf("error removing data directory: %s", remErr)
+			}
 
-		return nil, err
+			return nil, err
+		}
 	}
 
 	logger.Debugf("Started watcher; waiting for mongod to report port number")
@@ -194,11 +198,12 @@ func (s *Server) Stop() {
 		s.logger.Warnf("error stopping mongod process: %s", err)
 		return
 	}
-
-	err = s.watcherCmd.Process.Kill()
-	if err != nil {
-		s.logger.Warnf("error stopping watcher process: %s", err)
-		return
+	if s.watcherCmd != nil {
+		err = s.watcherCmd.Process.Kill()
+		if err != nil {
+			s.logger.Warnf("error stopping watcher process: %s", err)
+			return
+		}
 	}
 
 	err = os.RemoveAll(s.dbDir)
@@ -241,14 +246,24 @@ func stdoutHandler(log *strikememongolog.Logger) (io.Writer, <-chan error, <-cha
 
 			if !haveSentMessage {
 				downcaseLine := strings.ToLower(line)
-
-				if match := reReady.FindStringSubmatch(downcaseLine); match != nil {
-					port, err := strconv.Atoi(match[1])
-					if err != nil {
-						errChan <- errors.New("Could not parse port from mongod log line: " + downcaseLine)
+				lineStruct := struct {
+					Attr struct {
+						Port int `json:"port"`
+					} `json:"attr"`
+				}{}
+				err := json.Unmarshal([]byte(downcaseLine), &lineStruct)
+				if match := reReady.FindStringSubmatch(downcaseLine); match != nil || (err == nil && lineStruct.Attr.Port != 0) {
+					var port int
+					if match == nil {
+						port = lineStruct.Attr.Port
 					} else {
-						portChan <- port
+						port, err = strconv.Atoi(match[1])
+						if err != nil {
+							errChan <- errors.New("Could not parse port from mongod log line: " + downcaseLine)
+							return
+						}
 					}
+					portChan <- port
 					haveSentMessage = true
 				} else if reAlreadyInUse.MatchString(downcaseLine) {
 					errChan <- errors.New("Mongod startup failed, address in use")
